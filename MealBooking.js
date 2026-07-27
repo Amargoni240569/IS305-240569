@@ -99,6 +99,18 @@ class MealBooking { // Create a class called MealBooking.
 
     return true; // Return true if all information is valid.
   }
+  calculateTotal() { // Calculate the total booking cost.
+    const mealPrices = { Breakfast: 10, Lunch: 15, Dinner: 20 }; // Store prices for each meal.
+    return mealPrices[this.#mealType] * this.#quantity; // Return price multiplied by quantity.
+  }
+
+  confirmBooking() { // Confirm the booking.
+    this.#status = "Confirmed"; // Change the status to Confirmed.
+  }
+
+  cancelBooking() { // Cancel the booking.
+    this.#status = "Cancelled"; // Change the status to Cancelled.
+  }
 
 
 
