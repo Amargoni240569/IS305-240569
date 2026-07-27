@@ -51,5 +51,29 @@ class MealBooking { // Create a class called MealBooking.
     return this.#status; // Return the booking status.
   }
 
+  set studentId(studentId) { // Set a new student ID.
+    this.#studentId = studentId; // Save the new student ID.
+  }
+
+  set studentName(studentName) { // Set a new student name.
+    this.#studentName = studentName; // Save the new student name.
+  }
+
+  set mealDate(mealDate) { // Set a new meal date.
+    this.#mealDate = mealDate; // Save the new meal date.
+  }
+
+  set mealType(mealType) { // Set a new meal type.
+    this.#mealType = mealType; // Save the new meal type.
+  }
+
+  set quantity(quantity) { // Set a new quantity.
+    this.#quantity = Number(quantity); // Convert and save the new quantity.
+  }
+
+  set dietaryNote(dietaryNote) { // Set a new dietary note.
+    this.#dietaryNote = dietaryNote || "None"; // Save the note or use None.
+  }
+
 
 
