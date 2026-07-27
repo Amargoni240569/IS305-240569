@@ -112,5 +112,18 @@ class MealBooking { // Create a class called MealBooking.
     this.#status = "Cancelled"; // Change the status to Cancelled.
   }
 
+getSummary() { // Create a booking summary.
+    return `
+========================================
+             BOOKING CREATED
+========================================
+Student: ${this.#studentName} (${this.#studentId})
+Meal: ${this.#mealType} x ${this.#quantity}
+Date: ${this.#mealDate}
+Dietary note: ${this.#dietaryNote}
+Status: ${this.#status}
+Total cost: K${this.calculateTotal().toFixed(2)}
+========================================`; // Return the full booking summary.
+  }
 
 
