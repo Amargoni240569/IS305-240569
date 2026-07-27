@@ -127,3 +127,7 @@ Total cost: K${this.calculateTotal().toFixed(2)}
   }
 
 
+module.exports = MealBooking; // Allow this class to be used in another file.
+
+
+
