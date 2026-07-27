@@ -23,5 +23,33 @@ class MealBooking { // Create a class called MealBooking.
     this.#dietaryNote = dietaryNote || "None"; // Save dietary note or use None if empty.
     this.#status = "Pending"; // Set the default booking status to Pending.
   }
+    get studentId() { // Get the student ID.
+    return this.#studentId; // Return the student ID.
+  }
+
+  get studentName() { // Get the student name.
+    return this.#studentName; // Return the student name.
+  }
+
+  get mealDate() { // Get the meal date.
+    return this.#mealDate; // Return the meal date.
+  }
+
+  get mealType() { // Get the meal type.
+    return this.#mealType; // Return the meal type.
+  }
+
+  get quantity() { // Get the quantity.
+    return this.#quantity; // Return the quantity.
+  }
+
+  get dietaryNote() { // Get the dietary note.
+    return this.#dietaryNote; // Return the dietary note.
+  }
+
+  get status() { // Get the booking status.
+    return this.#status; // Return the booking status.
+  }
+
 
 
