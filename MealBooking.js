@@ -74,6 +74,31 @@ class MealBooking { // Create a class called MealBooking.
   set dietaryNote(dietaryNote) { // Set a new dietary note.
     this.#dietaryNote = dietaryNote || "None"; // Save the note or use None.
   }
+  validate() { // Check if the booking information is correct.
+    const validMeals = ["Breakfast", "Lunch", "Dinner"]; // Store the accepted meal types.
+
+    if (!this.#studentId) { // Check if student ID is missing.
+      throw new Error("Student ID is required."); // Show an error message.
+    }
+
+    if (!this.#studentName) { // Check if student name is missing.
+      throw new Error("Student name is required."); // Show an error message.
+    }
+
+    if (!this.#mealDate) { // Check if meal date is missing.
+      throw new Error("Meal date is required."); // Show an error message.
+    }
+
+    if (!validMeals.includes(this.#mealType)) { // Check if meal type is invalid.
+      throw new Error("Meal type must be Breakfast, Lunch, or Dinner."); // Show an error message.
+    }
+
+    if (!this.#quantity || this.#quantity <= 0) { // Check if quantity is invalid.
+      throw new Error("Quantity must be more than 0."); // Show an error message.
+    }
+
+    return true; // Return true if all information is valid.
+  }
 
 
 
