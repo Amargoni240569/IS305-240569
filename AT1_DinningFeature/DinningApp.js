@@ -3,7 +3,7 @@
 Program : Dining Meal Booking Feature
 Student Name : Abel M. WAMANIMBO
 Student ID : 240569
-Date : 31 July 2026
+Date : 16 August 2026
 Description :
 IS305 Object Oriented Programming: Lab 2 application
 using Student and MealBooking objects and arrays.

@@ -3,18 +3,21 @@
 Program : Dining Meal Booking Feature
 Student Name : Abel M. WAMANIMBO
 Student ID : 240569
-Date : 21 July 2026
+Date : 16 August 2026
 Description :
-IS305 Object Oriented Programming: A JavaScript program demonstrating classes, objects, constructors, private fields, getters, setters and methods.
+IS305 Object Oriented Programming: MealBooking class
+connected with the Student class for Lab 2.
 ---------------------------------------------------------
 */
 
-// Create the MealBooking class
+// Import Student class
+import Student from "./Student.js";
+
+// Create MealBooking class
 class MealBooking {
 
     // Private fields
-    #studentId;
-    #studentName;
+    #student;
     #mealDate;
     #mealType;
     #quantity;
@@ -22,48 +25,32 @@ class MealBooking {
     #bookingStatus;
 
     // Constructor
-    constructor(studentId, studentName, mealDate, mealType, quantity, dietaryNote) {
+    constructor(student, mealDate, mealType, quantity, dietaryNote) {
 
-        // Store the student ID
-        this.#studentId = studentId;
+        // Check that a Student object was supplied
+        if (!(student instanceof Student)) {
+            throw new Error("Invalid Student object.");
+        }
 
-        // Store the student name
-        this.#studentName = studentName;
+        // Store Student object
+        this.#student = student;
 
-        // Store the meal date
+        // Store booking information
         this.#mealDate = mealDate;
-
-        // Store the meal type
         this.#mealType = mealType;
-
-        // Store the quantity
         this.#quantity = quantity;
-
-        // Store the dietary note
         this.#dietaryNote = dietaryNote;
 
-        // Default booking status
+        // Default status
         this.#bookingStatus = "Pending";
+
+        // Validate booking
+        this.validateBooking();
     }
 
-    // Getter for student ID
-    get studentId() {
-        return this.#studentId;
-    }
-
-    // Setter for student ID
-    set studentId(studentId) {
-        this.#studentId = studentId;
-    }
-
-    // Getter for student name
-    get studentName() {
-        return this.#studentName;
-    }
-
-    // Setter for student name
-    set studentName(studentName) {
-        this.#studentName = studentName;
+    // Getter for Student
+    get student() {
+        return this.#student;
     }
 
     // Getter for meal date
@@ -71,19 +58,9 @@ class MealBooking {
         return this.#mealDate;
     }
 
-    // Setter for meal date
-    set mealDate(mealDate) {
-        this.#mealDate = mealDate;
-    }
-
     // Getter for meal type
     get mealType() {
         return this.#mealType;
-    }
-
-    // Setter for meal type
-    set mealType(mealType) {
-        this.#mealType = mealType;
     }
 
     // Getter for quantity
@@ -91,19 +68,9 @@ class MealBooking {
         return this.#quantity;
     }
 
-    // Setter for quantity
-    set quantity(quantity) {
-        this.#quantity = quantity;
-    }
-
     // Getter for dietary note
     get dietaryNote() {
         return this.#dietaryNote;
-    }
-
-    // Setter for dietary note
-    set dietaryNote(dietaryNote) {
-        this.#dietaryNote = dietaryNote;
     }
 
     // Getter for booking status
@@ -116,28 +83,50 @@ class MealBooking {
         this.#bookingStatus = bookingStatus;
     }
 
-    // Calculate the total meal cost
+    // Validate booking information
+    validateBooking() {
+
+        // Check meal date
+        if (!this.#mealDate || this.#mealDate.trim() == "") {
+            throw new Error("Meal date cannot be empty.");
+        }
+
+        // Check meal type
+        if (
+            this.#mealType != "Breakfast" &&
+            this.#mealType != "Lunch" &&
+            this.#mealType != "Dinner"
+        ) {
+            throw new Error("Invalid meal type.");
+        }
+
+        // Check quantity
+        if (this.#quantity <= 0) {
+            throw new Error("Quantity must be greater than zero.");
+        }
+    }
+
+    // Calculate meal cost
     calculateTotal() {
 
-        // Variable to store meal price
         let mealPrice = 0;
 
-        // Breakfast price
+        // Breakfast
         if (this.#mealType == "Breakfast") {
             mealPrice = 10;
         }
 
-        // Lunch price
+        // Lunch
         else if (this.#mealType == "Lunch") {
             mealPrice = 15;
         }
 
-        // Dinner price
+        // Dinner
         else if (this.#mealType == "Dinner") {
             mealPrice = 20;
         }
 
-        // Return total price
+        // Return total cost
         return mealPrice * this.#quantity;
     }
 
@@ -145,20 +134,16 @@ class MealBooking {
     getSummary() {
 
         return (
-            "Student ID : " + this.#studentId + "\n" +
-            "Student Name : " + this.#studentName + "\n" +
-            "Meal Date : " + this.#mealDate + "\n" +
-            "Meal Type : " + this.#mealType + "\n" +
-            "Quantity : " + this.#quantity + "\n" +
-            "Dietary Note : " + this.#dietaryNote + "\n" +
-            "Booking Status : " + this.#bookingStatus + "\n" +
-            "Total Cost : K" + this.calculateTotal()
+            "Student ID: " + this.#student.studentId + "\n" +
+            "Student Name: " + this.#student.getFullName() + "\n" +
+            "Meal Date: " + this.#mealDate + "\n" +
+            "Meal Type: " + this.#mealType + "\n" +
+            "Quantity: " + this.#quantity + "\n" +
+            "Booking Status: " + this.#bookingStatus + "\n" +
+            "Cost: K" + this.calculateTotal().toFixed(2)
         );
-
     }
-
 }
 
-// Export the class
+// Export MealBooking class
 export default MealBooking;
-
