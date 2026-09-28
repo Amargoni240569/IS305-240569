@@ -6,7 +6,7 @@ Student ID : 240569
 Date : 28 September 2026
 Description :
 IS305 Object Oriented Programming: RewardsDiningAccount
-class that inherits from DiningAccount for Lab 3.
+class that inherit's from DiningAccount for Lab 3.
 ---------------------------------------------------------
 */
 
