@@ -1,0 +1,12 @@
+{
+  "name": "is305-dining-meal-booking",
+  "version": "1.0.0",
+  "description": "IS305 Dining Meal Booking - Lab 3 Distinction Extension",
+  "type": "module",
+  "main": "DiningApp.js",
+  "scripts": {
+    "start": "node DiningApp.js",
+    "test": "node Lab3Tests.js"
+  },
+  "private": true
+}
