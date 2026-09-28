@@ -6,12 +6,14 @@ Student ID : 240569
 Date : 16 August 2026
 Description :
 IS305 Object Oriented Programming: MealBooking class
-connected with the Student class for Lab 2.
+connected with the Student class for Lab 2, extended in
+Lab 3 to pay for a booking through a dining account.
 ---------------------------------------------------------
 */
 
-// Import Student class
+// Import Student and DiningAccount classes
 import Student from "./Student.js";
+import DiningAccount from "./DiningAccount.js";
 
 // Create MealBooking class
 class MealBooking {
@@ -23,6 +25,7 @@ class MealBooking {
     #quantity;
     #dietaryNote;
     #bookingStatus;
+    #paymentStatus;
 
     // Constructor
     constructor(student, mealDate, mealType, quantity, dietaryNote) {
@@ -43,6 +46,7 @@ class MealBooking {
 
         // Default status
         this.#bookingStatus = "Pending";
+        this.#paymentStatus = "Unpaid";
 
         // Validate booking
         this.validateBooking();
@@ -81,6 +85,11 @@ class MealBooking {
     // Setter for booking status
     set bookingStatus(bookingStatus) {
         this.#bookingStatus = bookingStatus;
+    }
+
+    // Getter for payment status (Unpaid, Successful or Failed)
+    get paymentStatus() {
+        return this.#paymentStatus;
     }
 
     // Validate booking information
@@ -130,6 +139,45 @@ class MealBooking {
         return mealPrice * this.#quantity;
     }
 
+    // Pay for the booking using a dining account (Lab 3)
+    // If no account is given, the student's own account is used
+    processPayment(diningAccount = this.#student.diningAccount) {
+
+        // Check that a valid dining account was supplied
+        if (!(diningAccount instanceof DiningAccount)) {
+            throw new Error("A valid dining account is required to pay for a booking.");
+        }
+
+        // Prevent the same booking from being paid twice
+        if (this.#paymentStatus == "Successful" || this.#bookingStatus == "Confirmed") {
+            console.log("Payment rejected: this booking is already paid and confirmed.");
+            return false;
+        }
+
+        // A cancelled booking cannot be paid
+        if (this.#bookingStatus == "Cancelled") {
+            console.log("Payment rejected: this booking has been cancelled.");
+            return false;
+        }
+
+        // The same payForMeal() call works for every account type (polymorphism)
+        const paid = diningAccount.payForMeal(
+            this.calculateTotal(),
+            this.#mealType + " booking"
+        );
+
+        if (paid) {
+            // Payment worked: confirm the booking
+            this.#paymentStatus = "Successful";
+            this.#bookingStatus = "Confirmed";
+        } else {
+            // Payment failed: the booking stays Pending
+            this.#paymentStatus = "Failed";
+        }
+
+        return paid;
+    }
+
     // Return booking summary
     getSummary() {
 
@@ -140,6 +188,7 @@ class MealBooking {
             "Meal Type: " + this.#mealType + "\n" +
             "Quantity: " + this.#quantity + "\n" +
             "Booking Status: " + this.#bookingStatus + "\n" +
+            "Payment Status: " + this.#paymentStatus + "\n" +
             "Cost: K" + this.calculateTotal().toFixed(2)
         );
     }
