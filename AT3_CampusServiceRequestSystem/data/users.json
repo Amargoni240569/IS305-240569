@@ -1,0 +1,11 @@
+[
+  {
+    "userId": "DWU2026101",
+    "firstName": "Sample",
+    "lastName": "User",
+    "email": "Suser@example.com",
+    "userType": "StudentRequester",
+    "programme": "Business Studies",
+    "yearLevel": 2
+  }
+]
