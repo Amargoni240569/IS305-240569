@@ -1,38 +1,50 @@
-// Import Node's readline promises API for interactive console input.
-const readline = require('node:readline/promises');
+// Import Node's built-in test runner.
+const test = require('node:test');
 
-// Import standard input and output streams.
-const { stdin: input, stdout: output } = require('node:process');
+// Import strict assertions.
+const assert = require('node:assert/strict');
 
-// Import the Pass User class.
-const { User } = require('./User');
+// Import the Pass domain classes.
+const { User } = require('../src/User');
 
 // Import the Pass request class.
-const { ServiceRequest } = require('./ServiceRequest');
+const { ServiceRequest } = require('../src/ServiceRequest');
 
 // Import the Pass manager.
-const { ServiceRequestManager } = require('./ServiceRequestManager');
+const { ServiceRequestManager } = require('../src/ServiceRequestManager');
 
-// Store the exact console menu required by the Pass component.
-const MENU = '\nCAMPUS SERVICE REQUEST SYSTEM\n1. Register User\n2. Submit Service Request\n3. View Request by ID\n4. View My Requests\n5. View All Requests\n6. Update My Request\n7. Cancel My Request\n8. Search Requests\n9. View Request Summary\n10. Exit';
+// Create a reusable valid Pass fixture.
+function fixture() { const manager = new ServiceRequestManager(); const user = manager.registeruser(new User('USR001', 'Test', 'Entry', 'test@example.com', 'Student')); return { manager, user }; }
 
-// Ask a question and remove surrounding spaces from the response.
-async function ask(rl, question) { return (await rl.question(question)).trim(); }
+// Test valid User construction and display methods.
+test('valid User construction returns identity information', () => { const { user } = fixture(); assert.equal(user.userId, 'USR001'); assert.equal(user.getFullName(), 'Test Entry'); assert.match(user.displayInfo(), /test@example.com/); });
 
-// Print one or more request summaries to the console.
-function printRequests(requests) { if (!requests.length) return console.log('No requests found.'); requests.forEach(request => console.log(request.getRequestSummary())); }
+// Test invalid user IDs.
+test('invalid user IDs are rejected', () => { assert.throws(() => new User('A', 'Test', 'Entry', 'test@example.com'), /User ID/); });
 
-// Register a base Pass User.
-async function registerUser(rl, manager) { const user = new User(await ask(rl, 'User ID: '), await ask(rl, 'First name: '), await ask(rl, 'Last name: '), await ask(rl, 'Email: '), await ask(rl, 'User type: ') || 'Requester'); manager.registeruser(user); console.log(`User registered: ${user.displayInfo()}`); }
+// Test invalid email addresses.
+test('invalid email addresses are rejected', () => { assert.throws(() => new User('USR002', 'Test', 'Entry', 'bad-email'), /valid email/); });
 
-// Submit a base Pass ServiceRequest.
-async function submitRequest(rl, manager) { const requester = manager.finduserbyid(await ask(rl, 'Requester user ID: ')); if (!requester) throw new Error('Requester user was not found.'); const request = new ServiceRequest({ requestId: await ask(rl, 'Request ID (REQ-...): '), requester, title: await ask(rl, 'Title: '), description: await ask(rl, 'Description: '), location: await ask(rl, 'Campus location: '), category: await ask(rl, 'Category (ICT Support/Facilities Maintenance/Cleaning and Sanitation/General Campus Service): '), priority: await ask(rl, 'Priority (Low/Normal/High/Urgent): ') || 'Normal' }); manager.submitRequest(request); console.log(`Request submitted: ${request.getRequestSummary()}`); }
+// Test duplicate user IDs.
+test('duplicate user IDs are rejected', () => { const { manager, user } = fixture(); assert.throws(() => manager.registeruser(user), /Duplicate user ID/); });
 
-// Run the required menu until the user selects option 10.
-async function runMenu(manager = new ServiceRequestManager()) { const rl = readline.createInterface({ input, output }); let running = true; while (running) { console.log(MENU); const choice = await ask(rl, 'Select an option: '); try { if (choice === '1') await registerUser(rl, manager); else if (choice === '2') await submitRequest(rl, manager); else if (choice === '3') printRequests([manager.requireRequest(await ask(rl, 'Request ID: '))]); else if (choice === '4') printRequests(manager.getRequestsbyuser(await ask(rl, 'Your user ID: '))); else if (choice === '5') printRequests(manager.getallrequests()); else if (choice === '6') { const requestId = await ask(rl, 'Request ID: '); const userId = await ask(rl, 'Your user ID: '); const title = await ask(rl, 'New title: '); const description = await ask(rl, 'New description: '); manager.updateRequest(requestId, userId, { title, description }); console.log('Request updated successfully.'); } else if (choice === '7') { manager.cancelRequest(await ask(rl, 'Request ID: '), await ask(rl, 'Your user ID: ')); console.log('Request cancelled successfully.'); } else if (choice === '8') printRequests(manager.searchRequests(await ask(rl, 'Search text: '))); else if (choice === '9') console.log('Request summary:', manager.getRequestsummarybystatus()); else if (choice === '10') running = false; else console.log('Please select a menu number from 1 to 10.'); } catch (error) { console.log(`Error: ${error.message}`); } } rl.close(); console.log('Application closed.'); return manager; }
+// Test valid request submission and default Submitted status.
+test('valid request submission stores a Submitted request', () => { const { manager, user } = fixture(); const request = manager.submitRequest(new ServiceRequest({ requestId: 'REQ-001', requester: user, title: 'Wi-Fi issue', description: 'No access', location: 'Library', category: 'ICT Support', priority: 'High' })); assert.equal(request.status, 'Submitted'); assert.equal(manager.getallrequests().length, 1); });
 
-// Start the interactive menu only when this file is run directly.
-if (require.main === module) runMenu().catch(error => console.error(`Fatal error: ${error.message}`));
+// Test duplicate request IDs.
+test('duplicate request IDs are rejected', () => { const { manager, user } = fixture(); const details = { requestId: 'REQ-DUP', requester: user, title: 'A', description: 'B', location: 'C', category: 'ICT Support' }; manager.submitRequest(new ServiceRequest(details)); assert.throws(() => manager.submitRequest(new ServiceRequest(details)), /Duplicate request ID/); });
 
-// Export the menu and functions for tests and future Credit extension.
-module.exports = { MENU, runMenu };
+// Test unsupported categories and priorities.
+test('unsupported category and priority values are rejected', () => { const { user } = fixture(); assert.throws(() => new ServiceRequest({ requestId: 'REQ-BAD', requester: user, title: 'A', description: 'B', location: 'C', category: 'Unsupported' }), /category/); assert.throws(() => new ServiceRequest({ requestId: 'REQ-BAD2', requester: user, title: 'A', description: 'B', location: 'C', category: 'ICT Support', priority: 'Critical' }), /priority/); });
+
+// Test requester-only viewing and search operations.
+test('view by user and search return matching records', () => { const { manager, user } = fixture(); manager.submitRequest(new ServiceRequest({ requestId: 'REQ-SEARCH', requester: user, title: 'Campus Wi-Fi', description: 'Network access', location: 'Library', category: 'ICT Support' })); assert.equal(manager.getRequestsbyuser(user.userId).length, 1); assert.equal(manager.searchRequests('Wi-Fi').length, 1); });
+
+// Test only the owning requester can update a Submitted request.
+test('only the owning requester can update a Submitted request', () => { const { manager, user } = fixture(); const other = manager.registeruser(new User('USR002', 'Other', 'Person', 'other@example.com')); const request = manager.submitRequest(new ServiceRequest({ requestId: 'REQ-UPDATE', requester: user, title: 'Old title', description: 'Old description', location: 'Hall', category: 'General Campus Service' })); assert.throws(() => manager.updateRequest(request.requestId, other.userId, { title: 'Wrong user' }), /requester/); manager.updateRequest(request.requestId, user.userId, { title: 'New title' }); assert.equal(request.title, 'New title'); });
+
+// Test only the owner can cancel and that Cancelled is final.
+test('only the owner can cancel and Cancelled is final', () => { const { manager, user } = fixture(); const request = manager.submitRequest(new ServiceRequest({ requestId: 'REQ-CANCEL', requester: user, title: 'Cancel me', description: 'Test', location: 'Hall', category: 'Cleaning and Sanitation' })); manager.cancelRequest(request.requestId, user.userId); assert.equal(request.status, 'Cancelled'); assert.throws(() => manager.cancelRequest(request.requestId, user.userId), /Submitted/); });
+
+// Test the status summary required by the Pass component.
+test('request summary groups statuses correctly', () => { const { manager, user } = fixture(); manager.submitRequest(new ServiceRequest({ requestId: 'REQ-SUM', requester: user, title: 'Summary', description: 'Test', location: 'Hall', category: 'Facilities Maintenance' })); assert.deepEqual(manager.getRequestsummarybystatus(), { Submitted: 1 }); });
