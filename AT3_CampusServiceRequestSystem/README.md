@@ -2,9 +2,9 @@
 
 **IS305 Object-Oriented Programming — Assessment Task 3**
 
-Student name: **[Enter your name]**  
-Student ID: **[Enter your student ID]**  
-GitHub repository URL: **[Paste your repository URL]**
+Student name: **Abel M. WAMANIMBO**  
+Student ID: **240569**  
+
 
 ## How to run the project
 
