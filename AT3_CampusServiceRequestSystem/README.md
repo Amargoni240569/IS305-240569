@@ -1,92 +1,46 @@
-# Campus Service Request Management System — Pass Stage
+# Campus Service Request Management System — Credit Stage
 
-This is the independent **Pass-stage foundation** reverse-engineered from the same architecture used for the completed Credit and Distinction projects. It contains only the core Pass functionality and is ready to be committed before adding Credit and Distinction extensions.
+This is the independent **Credit-stage prerequisite** for the IS305 Campus Service Request Management System. It is reverse-engineered from the working Pass/Credit behaviour in the completed project, but deliberately excludes Distinction-only JSON repositories, object restoration, audit persistence, management reports, and automated persistence tests.
 
-## Pass requirements implemented
+## Credit requirements implemented
 
-- `User` class with private fields for user ID, first name, last name, email, and user type.
-- User constructor, getters, controlled setters, `getFullName()`, `validate()`, and `displayInfo()`.
-- `ServiceRequest` class with request ID, requester, title, description, campus location, category, priority, status, date submitted, and date updated.
-- Default request status is `Submitted`.
-- `validate()`, `updateDetails()`, `cancelRequest()`, and `getRequestSummary()`.
-- `ServiceRequestManager` arrays and required methods:
-  - `registeruser(user)`
-  - `finduserbyid(userId)`
-  - `submitRequest(request)`
-  - `findRequestbyid(requestId)`
-  - `getRequestsbyuser(userId)`
-  - `getallrequests()`
-  - `updateRequest(requestId, userId, changes)`
-  - `cancelRequest(requestId, userId)`
-  - `searchRequests(searchText)`
-  - `getRequestsummarybystatus()`
-- Required categories:
-  - `ICT Support`
-  - `Facilities Maintenance`
-  - `Cleaning and Sanitation`
-  - `General Campus Service`
-- Required priorities: `Low`, `Normal`, `High`, `Urgent`.
-- Pass statuses: `Submitted`, `Cancelled`.
-- Validation for missing values, invalid email, duplicate IDs, unsupported category/priority, unauthorised updates, and unauthorised/repeated cancellation.
-- Required 1–10 console menu and complete core workflow.
+- User inheritance: `StudentRequester`, `StaffRequester`, `ServiceOfficer`, and `Technician`.
+- Request inheritance: `ICTSupportRequest`, `MaintenanceRequest`, and `CleaningRequest`.
+- Constructor chaining through `super()`.
+- Controlled request workflow: `Submitted → Reviewed → Assigned → In Progress → Resolved → Closed`.
+- Final `Cancelled` status.
+- Requester ownership permissions for update and cancellation.
+- Service Officer permissions for review, technician assignment, and closure.
+- Assigned Technician permissions for starting and resolving work.
+- Method overriding for `getRequestSummary()`, `calculatePriorityScore()`, and `getTargetResolutionHours()`.
+- Search by request ID, title, and description.
+- Filter by category, status, priority, and technician.
+- Sort by submission date and specialised priority score.
+- Request history entries for approved updates and status transitions.
+- JavaScript arrays only; no database and no JSON persistence at this stage.
 
-## Required console menu
+## Files
 
 ```text
-CAMPUS SERVICE REQUEST SYSTEM
-1. Register User
-2. Submit Service Request
-3. View Request by ID
-4. View My Requests
-5. View All Requests
-6. Update My Request
-7. Cancel My Request
-8. Search Requests
-9. View Request Summary
-10. Exit
+src/User.js                  Base User and role subclasses
+src/ServiceRequest.js         Base request, validation, transitions, history
+src/specialisedRequests.js    ICT, maintenance, and cleaning subclasses
+src/ServiceRequestManager.js  Arrays, permissions, workflow, search, filters, sorting
+tests/credit.test.js          Credit-focused automated tests
 ```
 
-## Run the Pass component
+All source lines include simple explanatory comments for the class, field, method, validation, permission, and workflow operations.
+
+## Run and test
 
 ```bash
-cd /home/AT3_CampusServiceRequestSystem_PassStage
 npm install
 npm test
 npm start
 ```
 
-## Example console test sequence
+`npm test` runs 11 Credit-stage tests. `npm start` runs the Credit demonstration in `src/CampusServiceApp.js`.
 
-Register a user:
+## Later Distinction extension
 
-```text
-1
-User ID: STU001
-First name: Ava
-Last name: Kila
-Email: ava@example.com
-User type: Student
-```
-
-Submit a request:
-
-```text
-2
-Requester user ID: STU001
-Request ID (REQ-...): REQ-001
-Title: Unable to access campus Wi-Fi
-Description: The laptop cannot authenticate on the library network.
-Campus location: Library Level 2
-Category: ICT Support
-Priority: High
-```
-
-Then test viewing, searching, updating, cancelling, and summary using menu options `3` through `9`. Exit with `10`.
-
-## Comments and extension structure
-
-Every source file contains simple comments explaining the class, private fields, constructors, setters, validation, manager operations, and console actions. The arrays and domain method names are intentionally compatible with the later Credit extension. Credit can add role subclasses, specialised request subclasses, status transitions, role permissions, overriding, filtering, sorting, and request history without replacing this foundation. Distinction can then add repositories, JSON persistence, object restoration, audits, reports, and expanded tests.
-
-## Tests
-
-The Pass test suite contains 10 automated tests for valid construction, invalid IDs and emails, duplicate identifiers, request submission, categories, priorities, user viewing, search, update ownership, cancellation, final status behaviour, and summaries.
+The existing finalized Distinction project can extend this stage by adding repositories, `fs/promises` JSON persistence, the restoration factory, audit logs, reports, and additional persistence tests. The Credit domain classes and manager methods are intentionally structured as the prerequisite layer for that extension.
