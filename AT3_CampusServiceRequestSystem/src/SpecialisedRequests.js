@@ -1,60 +1,82 @@
-// Import the common ServiceRequest base class.
+// Import the common request base class.
 const { ServiceRequest } = require('./ServiceRequest');
 
-// ICTSupportRequest models device, system, fault, and network impact information.
-
+// ICT requests add device and network information.
 class ICTSupportRequest extends ServiceRequest {
-  // Chain common request data through super() before setting ICT fields.
+
+  // Chain common data through super and validate specialised fields.
   constructor(common, specialised = {}) { super({ ...common, category: 'ICT Support' }); this.deviceType = specialised.deviceType; this.systemName = specialised.systemName; this.faultType = specialised.faultType; this.networkImpact = specialised.networkImpact; this.validateSpecialisedFields(); }
 
-  // Validate every required ICT-specific field.
-  validateSpecialisedFields() { if (!this.deviceType || !this.systemName || !this.faultType || !this.networkImpact) throw new Error('ICT device, system, fault, and network impact are required.'); return true; }
+  // Validate the ICT-specific fields.
+  validateSpecialisedFields() { if (!this.deviceType || !this.systemName || !this.faultType || !this.networkImpact) throw new Error('ICT device, system, fault, and network impact are required.'); }
 
-  // Override the score method with network-impact behaviour.
+  // Calculate a higher score for network-impacting faults.
   calculatePriorityScore() { return ({ Low: 10, Normal: 20, High: 35, Urgent: 50 })[this.priority] + (this.networkImpact === 'High' ? 20 : 0); }
-  // Override the target method with a shorter high-impact target.
+
+  // ICT incidents target a short resolution period.
   getTargetResolutionHours() { return this.networkImpact === 'High' ? 4 : 12; }
-  // Override the summary method with ICT-specific information.
+
+  // Override the common summary with ICT details.
   getRequestSummary() { return `${super.getRequestSummary()} | ${this.deviceType}/${this.systemName} | Fault: ${this.faultType}`; }
+
+  // Return specialised fields for JSON persistence.
+  specialisedData() { return { deviceType: this.deviceType, systemName: this.systemName, faultType: this.faultType, networkImpact: this.networkImpact }; }
 }
 
-// MaintenanceRequest models building, room, hazard, and equipment information.
-
+// Maintenance requests add building, room, hazard, and equipment information.
 class MaintenanceRequest extends ServiceRequest {
-  // Chain common request data through super() before setting maintenance fields.
+
+  // Chain common data through super and validate specialised fields.
   constructor(common, specialised = {}) { super({ ...common, category: 'Facilities Maintenance' }); this.building = specialised.building; this.roomNumber = specialised.roomNumber; this.hazardLevel = specialised.hazardLevel; this.equipmentAffected = specialised.equipmentAffected; this.validateSpecialisedFields(); }
 
-  // Validate every required maintenance-specific field.
-  validateSpecialisedFields() { if (!this.building || !this.roomNumber || !this.hazardLevel || !this.equipmentAffected) throw new Error('Building, room, hazard, and equipment are required.'); return true; }
-
-  // Override the score method with hazard-level behaviour.
+  // Validate the maintenance-specific fields.
+  validateSpecialisedFields() { if (!this.building || !this.roomNumber || !this.hazardLevel || !this.equipmentAffected) throw new Error('Building, room, hazard, and equipment are required.'); }
+  // Hazard level changes the priority score.
   calculatePriorityScore() { return ({ Low: 10, Normal: 20, High: 35, Urgent: 50 })[this.priority] + ({ Low: 0, Medium: 10, High: 20 })[this.hazardLevel]; }
-
-  // Override the target method with a hazard-level target.
+  // Hazardous maintenance receives a faster target.
   getTargetResolutionHours() { return this.hazardLevel === 'High' ? 8 : 24; }
-
-  // Override the summary method with maintenance-specific information.
+  // Override the common summary with location-specific details.
   getRequestSummary() { return `${super.getRequestSummary()} | ${this.building} Room ${this.roomNumber} | Hazard: ${this.hazardLevel}`; }
+  // Return specialised fields for JSON persistence.
+  specialisedData() { return { building: this.building, roomNumber: this.roomNumber, hazardLevel: this.hazardLevel, equipmentAffected: this.equipmentAffected }; }
 }
-
-// CleaningRequest models cleaning area, risk, service type, and preferred time.
-
+// Cleaning requests add hygiene and scheduling information.
 class CleaningRequest extends ServiceRequest {
-  // Chain common request data through super() before setting cleaning fields.
+
+  // Chain common data through super and validate specialised fields.
   constructor(common, specialised = {}) { super({ ...common, category: 'Cleaning and Sanitation' }); this.cleaningArea = specialised.cleaningArea; this.hygieneRisk = specialised.hygieneRisk; this.serviceType = specialised.serviceType; this.preferredServiceTime = specialised.preferredServiceTime; this.validateSpecialisedFields(); }
 
-  // Validate every required cleaning-specific field.
-  validateSpecialisedFields() { if (!this.cleaningArea || !this.hygieneRisk || !this.serviceType || !this.preferredServiceTime) throw new Error('Cleaning area, hygiene risk, service type, and time are required.'); return true; }
+  // Validate the cleaning-specific fields.
+  validateSpecialisedFields() { if (!this.cleaningArea || !this.hygieneRisk || !this.serviceType || !this.preferredServiceTime) throw new Error('Cleaning area, hygiene risk, service type, and time are required.'); }
 
-  // Override the score method with hygiene-risk behaviour.
+  // Hygiene risk changes the priority score.
   calculatePriorityScore() { return ({ Low: 10, Normal: 20, High: 35, Urgent: 50 })[this.priority] + ({ Low: 0, Medium: 10, High: 20 })[this.hygieneRisk]; }
 
-  // Override the target method with a hygiene-risk target.
+  // High hygiene risk receives a faster target.
   getTargetResolutionHours() { return this.hygieneRisk === 'High' ? 6 : 18; }
 
-  // Override the summary method with cleaning-specific information.
+  // Override the common summary with cleaning details.
   getRequestSummary() { return `${super.getRequestSummary()} | Area: ${this.cleaningArea} | Risk: ${this.hygieneRisk}`; }
+
+  // Return specialised fields for JSON persistence.
+  specialisedData() { return { cleaningArea: this.cleaningArea, hygieneRisk: this.hygieneRisk, serviceType: this.serviceType, preferredServiceTime: this.preferredServiceTime }; }
 }
 
-// Export all Credit request subclasses.
-module.exports = { ICTSupportRequest, MaintenanceRequest, CleaningRequest };
+// General campus requests provide concrete behaviour for the fourth Pass category.
+class GeneralCampusRequest extends ServiceRequest {
+
+  // Chain common request fields through the base constructor.
+  constructor(common) { super({ ...common, category: 'General Campus Service' }); }
+
+  // Give general requests the normal baseline priority score.
+  calculatePriorityScore() { return ({ Low: 10, Normal: 20, High: 35, Urgent: 50 })[this.priority]; }
+
+  // Give general requests a one-day target.
+  getTargetResolutionHours() { return 24; }
+
+  // Preserve the inherited summary behaviour for general requests.
+  getRequestSummary() { return `${super.getRequestSummary()} | General campus service`; }
+}
+
+// Export all specialised classes for managers, factories, and tests.
+module.exports = { ICTSupportRequest, MaintenanceRequest, CleaningRequest, GeneralCampusRequest };
