@@ -1,45 +1,50 @@
-// These categories are the only categories accepted by the Pass component.
+// These are the four categories required by the assessment.
 const CATEGORIES = ['ICT Support', 'Facilities Maintenance', 'Cleaning and Sanitation', 'General Campus Service'];
 
-// These priorities are the only priority values accepted by the Pass component.
+// These are the four supported priority values.
 const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'];
 
-// The Pass component supports Submitted and final Cancelled statuses.
-const STATUSES = ['Submitted', 'Cancelled'];
+// This map controls every valid Credit workflow transition.
+const TRANSITIONS = { Submitted: ['Reviewed', 'Cancelled'], Reviewed: ['Assigned', 'Cancelled'], Assigned: ['In Progress'], 'In Progress': ['Resolved'], Resolved: ['Closed'], Closed: [], Cancelled: [] };
 
-// ServiceRequest stores one submitted campus service request.
+// ServiceRequest stores common request data and shared behaviour.
+
 class ServiceRequest {
-  
-  // Construct a request with Submitted as the default status.
-  constructor({ requestId, requester, title, description, location, category, priority = 'Normal', status = 'Submitted', dateSubmitted = new Date().toISOString(), dateUpdated = dateSubmitted }) {
+  // Construct a request with a default Submitted status.
+  constructor({ requestId, requester, title, description, location, category, priority = 'Normal', status = 'Submitted', dateSubmitted = new Date().toISOString(), dateUpdated = dateSubmitted, assignedTechnicianId = null, history = [] }) {
 
-    // Keep the request ID private for encapsulation.
+    // Store the request ID privately.
     this.#requestId = requestId;
 
     // Store the requester object relationship.
     this.requester = requester;
 
-    // Store title and description using controlled setters.
+    // Store title and description through controlled setters.
     this.title = title;
     this.description = description;
 
-    // Store the campus location and supported classification values.
+    // Store the campus location and classification values.
     this.location = location;
     this.category = category;
     this.priority = priority;
 
-    // Store the initial or restored request status.
+    // Store the current workflow state.
     this.status = status;
 
-    // Store submission and last-update timestamps.
-    this.dateSubmitted = dateSubmitted;
+    // Store submission and update timestamps for history context.
+        this.dateSubmitted = dateSubmitted;
     this.dateUpdated = dateUpdated;
 
-    // Reject invalid data before the request enters the manager array.
+    // Store the assigned technician ID when assignment has occurred.
+    this.assignedTechnicianId = assignedTechnicianId;
+    // Restore history or start a new history array.
+    this.history = history;
+
+    // Reject incomplete or unsupported request data.
     this.validate();
   }
 
-  // Keep the request ID, title, and description private.
+  // Keep common identifiers and text values private.
   #requestId;
   #title;
   #description;
@@ -47,29 +52,42 @@ class ServiceRequest {
   // Return the private request ID.
   get requestId() { return this.#requestId; }
 
-  // Return the request title.
+  // Return the title.
   get title() { return this.#title; }
 
-  // Require a non-empty title.
+  // Set a non-empty request title.
   set title(value) { if (!String(value ?? '').trim()) throw new Error('Request title is required.'); this.#title = String(value).trim(); }
 
-  // Return the request description.
+  // Return the description.
   get description() { return this.#description; }
 
-  // Require a non-empty description.
+  // Set a non-empty request description.
   set description(value) { if (!String(value ?? '').trim()) throw new Error('Request description is required.'); this.#description = String(value).trim(); }
 
-  // Validate IDs, ownership, location, categories, priorities, and statuses.
-  validate() { if (!/^REQ[-_A-Z0-9]+$/i.test(this.requestId)) throw new Error('Request ID must start with REQ.'); if (!this.requester?.userId) throw new Error('A valid requester is required.'); if (!String(this.location ?? '').trim()) throw new Error('Campus location is required.'); if (!CATEGORIES.includes(this.category)) throw new Error('Unsupported request category.'); if (!PRIORITIES.includes(this.priority)) throw new Error('Unsupported priority value.'); if (!STATUSES.includes(this.status)) throw new Error('Unsupported Pass status.'); return true; }
-  // Return a concise summary for console viewing.
+  // Validate common fields and supported values.
+  validate() { if (!/^REQ[-_A-Z0-9]+$/i.test(this.requestId)) throw new Error('Request ID must start with REQ.'); if (!this.requester?.userId) throw new Error('A valid requester is required.'); if (!String(this.location ?? '').trim()) throw new Error('Campus location is required.'); if (!CATEGORIES.includes(this.category)) throw new Error('Unsupported request category.'); if (!PRIORITIES.includes(this.priority)) throw new Error('Unsupported priority value.'); if (!Object.hasOwn(TRANSITIONS, this.status)) throw new Error('Unsupported request status.'); return true; }
+
+  // Base Credit behaviour provides a common summary.
   getRequestSummary() { return `${this.requestId} | ${this.category} | ${this.title} | ${this.priority} | ${this.status}`; }
 
-  // Update only an owned request that is still Submitted.
-  updateDetails(changes = {}, actor) { if (this.status !== 'Submitted') throw new Error('Only Submitted requests can be updated.'); if (actor?.userId !== this.requester.userId) throw new Error('Only the requester can update this request.'); const original = { title: this.title, description: this.description, location: this.location, category: this.category, priority: this.priority }; try { for (const field of ['title', 'description', 'location', 'category', 'priority']) if (changes[field] !== undefined) this[field] = changes[field]; this.validate(); } catch (error) { Object.assign(this, original); throw error; } this.dateUpdated = new Date().toISOString(); return this; }
+  // Subclasses override this method with specialised scoring.
+  calculatePriorityScore() { throw new Error('Subclass must implement calculatePriorityScore().'); }
 
-  // Cancel only an owned Submitted request.
-  cancelRequest(actor) { if (this.status !== 'Submitted') throw new Error('Only Submitted requests can be cancelled.'); if (actor?.userId !== this.requester.userId) throw new Error('Only the requester can cancel this request.'); this.status = 'Cancelled'; this.dateUpdated = new Date().toISOString(); return this; }
+  // Subclasses override this method with specialised targets.
+  getTargetResolutionHours() { throw new Error('Subclass must implement getTargetResolutionHours().'); }
+
+  // Add an approved action to the request history array.
+  addHistory(previousStatus, newStatus, action, actor, comment = '') { this.history.push({ previousStatus, newStatus, action, actorIdOrRole: actor?.userId || actor?.userType || String(actor), comment, dateTime: new Date().toISOString() }); }
+
+  // Move to a new state only when the transition is permitted.
+  transitionTo(newStatus, actor, comment = '') { if (!TRANSITIONS[this.status].includes(newStatus)) throw new Error(`Invalid transition from ${this.status} to ${newStatus}.`); const previousStatus = this.status; this.status = newStatus; this.dateUpdated = new Date().toISOString(); this.addHistory(previousStatus, newStatus, `Status changed to ${newStatus}`, actor, comment); return this.status; }
+
+  // Update only fields permitted for an owned Submitted request.
+  updateDetails(changes = {}, actor) { if (this.status !== 'Submitted') throw new Error('Only Submitted requests can be updated.'); if (actor?.userId !== this.requester.userId) throw new Error('Only the requester can update this request.'); for (const field of ['title', 'description', 'location', 'category', 'priority']) if (changes[field] !== undefined) this[field] = changes[field]; this.dateUpdated = new Date().toISOString(); this.addHistory('Submitted', 'Submitted', 'Request details updated', actor, 'Requester update'); return this; }
+  
+  // Cancel only an owned request through the transition guard.
+  cancelRequest(actor) { if (actor?.userId !== this.requester.userId) throw new Error('Only the requester can cancel this request.'); return this.transitionTo('Cancelled', actor, 'Requester cancellation'); }
 }
 
-// Export the class and constants for the manager, app, and tests.
-module.exports = { ServiceRequest, CATEGORIES, PRIORITIES, STATUSES };
+// Export the base class and shared validation constants.
+module.exports = { ServiceRequest, CATEGORIES, PRIORITIES, TRANSITIONS };
