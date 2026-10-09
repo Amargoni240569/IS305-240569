@@ -1,0 +1,21 @@
+[
+  {
+    "requestId": "Req-001",
+    "requestType": "ICTSupportRequest",
+    "requesterId": "DWU2026101",
+    "title": "Unable to access campus Wi-fi",
+    "description": "The laptop cannot authenticate on the library Network",
+    "location": "Library",
+    "category": "ICT Support",
+    "priority": "High",
+    "status": "Submitted",
+    "dateSubmitted": "2026-09-30T15:10:58.519Z",
+    "dateUpdated": "2026-09-30T15:10:58.519Z",
+    "assignedTechnicianId": null,
+    "history": [],
+    "deviceType": "Laptop",
+    "systemName": "Campus Wifi",
+    "faultType": "Authentication and Discoverability failure",
+    "networkImpact": "High"
+  }
+]
