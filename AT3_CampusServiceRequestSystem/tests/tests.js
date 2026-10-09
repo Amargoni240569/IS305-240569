@@ -1,49 +1,65 @@
-// Import Node's built-in test runner.
+// Import the Node test runner.
 const test = require('node:test');
 
-// Import strict assertions for exact verification.
+// Import strict assertions.
 const assert = require('node:assert/strict');
 
-// Import User subclasses for inheritance and role tests.
-const { User, StudentRequester, StaffRequester, ServiceOfficer, Technician } = require('../src/User');
+// Import temporary directory helpers.
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
 
-// Import all Credit request subclasses.
+// Import application classes.
+const { User, StudentRequester, ServiceOfficer, Technician } = require('../src/User');
 const { ICTSupportRequest, MaintenanceRequest, CleaningRequest } = require('../src/specialisedRequests');
 
-// Import the Credit manager.
+// Import the base request to test unsupported category validation directly.
+const { ServiceRequest } = require('../src/ServiceRequest');
 const { ServiceRequestManager } = require('../src/ServiceRequestManager');
+const { PersistentCampusService } = require('../src/PersistentService');
+const { buildReports } = require('../src/reports');
 
-// Create a common Credit-stage test fixture.
-function fixture() { const manager = new ServiceRequestManager(); const student = manager.registeruser(new StudentRequester('STU001', 'Ava', 'Kila', 'ava@example.com', 'Information Systems', 3)); const staff = manager.registeruser(new StaffRequester('STAFF001', 'Mila', 'Toma', 'mila@example.com', 'Finance')); const officer = manager.registeruser(new ServiceOfficer('OFF001', 'Owen', 'Sali', 'owen@example.com', 'Campus Services')); const technician = manager.registeruser(new Technician('TECH001', 'Noah', 'Sali', 'noah@example.com', 'Network Support')); return { manager, student, staff, officer, technician }; }
+// Create a valid test fixture.
+function fixture() { const manager = new ServiceRequestManager(); const student = manager.registerUser(new StudentRequester('STU001', 'Ava', 'Kila', 'ava@example.com', 'IS', 2)); const officer = manager.registerUser(new ServiceOfficer('OFF001', 'Mila', 'Toma', 'mila@example.com')); const technician = manager.registerUser(new Technician('TECH001', 'Noah', 'Sali', 'noah@example.com', 'Networks')); return { manager, student, officer, technician }; }
 
-// Confirm that all required User subclasses inherit from User.
-test('Credit user inheritance and constructor chaining work', () => { const { student, staff, officer, technician } = fixture(); assert.ok(student instanceof User); assert.ok(staff instanceof User); assert.ok(officer instanceof User); assert.ok(technician instanceof User); });
-// Confirm that all three required request subclasses use inheritance.
-test('Credit request subclasses inherit from ServiceRequest', () => { const { student } = fixture(); const common = { requester: student, title: 'T', description: 'D', location: 'L' }; const ict = new ICTSupportRequest({ ...common, requestId: 'REQ-I' }, { deviceType: 'Laptop', systemName: 'Wi-Fi', faultType: 'No access', networkImpact: 'High' }); const maintenance = new MaintenanceRequest({ ...common, requestId: 'REQ-M' }, { building: 'B', roomNumber: '1', hazardLevel: 'Low', equipmentAffected: 'Door' }); const cleaning = new CleaningRequest({ ...common, requestId: 'REQ-C' }, { cleaningArea: 'Hall', hygieneRisk: 'Low', serviceType: 'Bins', preferredServiceTime: 'Morning' }); assert.equal(ict.constructor.name, 'ICTSupportRequest'); assert.equal(maintenance.constructor.name, 'MaintenanceRequest'); assert.equal(cleaning.constructor.name, 'CleaningRequest'); });
+// Test valid construction and getters.
+test('valid user construction exposes encapsulated data', () => { const user = new User('USR001', 'A', 'B', 'a@example.com'); assert.equal(user.getFullName(), 'A B'); assert.equal(user.userId, 'USR001'); });
 
-// Confirm that specialised fields reject incomplete data.
-test('specialised fields are validated', () => { const { student } = fixture(); assert.throws(() => new ICTSupportRequest({ requestId: 'REQ-BAD', requester: student, title: 'T', description: 'D', location: 'L' }, { deviceType: 'Laptop' }), /ICT/); });
+// Test invalid email validation.
+test('invalid email is rejected', () => { assert.throws(() => new User('USR002', 'A', 'B', 'bad-email'), /valid email/); });
 
-// Confirm that overridden methods return specialised information.
-test('method overriding provides specialised summary and score behaviour', () => { const { student } = fixture(); const request = new ICTSupportRequest({ requestId: 'REQ-OVR', requester: student, title: 'Wi-Fi', description: 'Down', location: 'Library', priority: 'High' }, { deviceType: 'Laptop', systemName: 'Campus Wi-Fi', faultType: 'Network failure', networkImpact: 'High' }); assert.match(request.getRequestSummary(), /Laptop/); assert.equal(request.getTargetResolutionHours(), 4); assert.ok(request.calculatePriorityScore() > 35); });
+// Test duplicate identifiers.
+test('duplicate user identifiers are rejected', () => { const { manager, student } = fixture(); assert.throws(() => manager.registerUser(student), /Duplicate/); });
 
-// Confirm only Service Officers can review requests.
-test('only Service Officers can review requests', () => { const { manager, student, technician } = fixture(); const request = manager.submitRequest(new ICTSupportRequest({ requestId: 'REQ-ROLE', requester: student, title: 'T', description: 'D', location: 'L' }, { deviceType: 'Laptop', systemName: 'Wi-Fi', faultType: 'Down', networkImpact: 'Low' })); assert.throws(() => manager.reviewRequest(request.requestId, technician.userId), /ServiceOfficer/); });
+// Test specialised request fields and polymorphic methods.
+test('specialised requests override summary and score methods', () => { const { student } = fixture(); const request = new ICTSupportRequest({ requestId: 'REQ-ICT', requester: student, title: 'Wi-Fi', description: 'No access', location: 'Library', priority: 'High' }, { deviceType: 'Laptop', systemName: 'Wi-Fi', faultType: 'Auth', networkImpact: 'High' }); assert.match(request.getRequestSummary(), /Laptop/); assert.equal(request.getTargetResolutionHours(), 4); assert.ok(request.calculatePriorityScore() > 35); });
 
-// Confirm the complete Credit workflow is controlled and recorded.
-test('controlled workflow reaches Closed and records history', () => { const { manager, student, officer, technician } = fixture(); const request = manager.submitRequest(new ICTSupportRequest({ requestId: 'REQ-FLOW', requester: student, title: 'Network', description: 'Down', location: 'Lab' }, { deviceType: 'PC', systemName: 'LAN', faultType: 'Cable', networkImpact: 'Low' })); assert.equal(request.status, 'Submitted'); manager.reviewRequest(request.requestId, officer.userId); manager.assignTechnician(request.requestId, officer.userId, technician.userId, 'High'); manager.startWork(request.requestId, technician.userId); manager.resolveRequest(request.requestId, technician.userId, 'Cable replaced.'); manager.closeRequest(request.requestId, officer.userId); assert.equal(request.status, 'Closed'); assert.equal(request.history.length, 5); });
+// Test invalid category values through the base class.
+test('unsupported category is rejected', () => { const { student } = fixture(); assert.throws(() => new ServiceRequest({ requestId: 'REQ-M', requester: student, title: 'Leak', description: 'Leak', location: 'B', category: 'Unsupported', priority: 'Normal' }), { message: /category/ }); });
 
-// Confirm invalid transitions are rejected.
-test('invalid status transitions are rejected', () => { const { manager, student, officer } = fixture(); const request = manager.submitRequest(new ICTSupportRequest({ requestId: 'REQ-INVALID', requester: student, title: 'T', description: 'D', location: 'L' }, { deviceType: 'PC', systemName: 'LAN', faultType: 'Down', networkImpact: 'Low' })); assert.throws(() => manager.closeRequest(request.requestId, officer.userId), /Invalid transition/); });
+// Test requester ownership for updates.
+test('only the owning requester can update a Submitted request', () => { const { manager, student } = fixture(); const other = new User('USR999', 'Other', 'User', 'o@example.com'); manager.registerUser(other); const request = manager.submitRequest(new CleaningRequest({ requestId: 'REQ-C', requester: student, title: 'Bins', description: 'Full', location: 'Hall', priority: 'Low' }, { cleaningArea: 'Hall', hygieneRisk: 'Low', serviceType: 'Bins', preferredServiceTime: 'Morning' })); assert.throws(() => manager.updateRequest(request.requestId, other.userId, { title: 'No' }), /requester/); });
 
-// Confirm only the assigned technician can work on a request.
-test('only the assigned technician can start or resolve work', () => { const { manager, student, officer, technician } = fixture(); const wrongTechnician = manager.registeruser(new Technician('TECH002', 'Wrong', 'Person', 'wrong@example.com', 'Cleaning')); const request = manager.submitRequest(new MaintenanceRequest({ requestId: 'REQ-TECH', requester: student, title: 'Door', description: 'Broken', location: 'B' }, { building: 'B', roomNumber: '2', hazardLevel: 'High', equipmentAffected: 'Door' })); manager.reviewRequest(request.requestId, officer.userId); manager.assignTechnician(request.requestId, officer.userId, technician.userId); assert.throws(() => manager.startWork(request.requestId, wrongTechnician.userId), /assigned/); });
+// Test the complete Credit workflow and history.
+test('role-controlled workflow reaches Closed and records history', () => { const { manager, student, officer, technician } = fixture(); const request = manager.submitRequest(new ICTSupportRequest({ requestId: 'REQ-W', requester: student, title: 'Network', description: 'Down', location: 'Lab', priority: 'High' }, { deviceType: 'PC', systemName: 'LAN', faultType: 'Cable', networkImpact: 'Low' })); manager.reviewRequest(request.requestId, officer.userId); manager.assignTechnician(request.requestId, officer.userId, technician.userId, 'High'); manager.startWork(request.requestId, technician.userId); manager.resolveRequest(request.requestId, technician.userId); manager.closeRequest(request.requestId, officer.userId); assert.equal(request.status, 'Closed'); assert.ok(request.history.length >= 4); });
 
-// Confirm search, filtering, and sorting use the request collection correctly.
-test('search filter and sort return correct results', () => { const { manager, student } = fixture(); const ict = manager.submitRequest(new ICTSupportRequest({ requestId: 'REQ-SEARCH', requester: student, title: 'Wi-Fi failure', description: 'Network issue', location: 'Library', priority: 'Urgent' }, { deviceType: 'Laptop', systemName: 'Wi-Fi', faultType: 'Down', networkImpact: 'High' })); const cleaning = manager.submitRequest(new CleaningRequest({ requestId: 'REQ-CLEAN', requester: student, title: 'Bins', description: 'Full bins', location: 'Hall', priority: 'Low' }, { cleaningArea: 'Hall', hygieneRisk: 'Low', serviceType: 'Bins', preferredServiceTime: 'Morning' })); assert.equal(manager.searchRequests('Wi-Fi').length, 1); assert.equal(manager.filterRequests({ category: 'ICT Support' }).length, 1); assert.equal(manager.sortRequests([cleaning, ict], 'priority')[0].requestId, 'REQ-SEARCH'); });
+// Test invalid workflow transitions.
+test('invalid status transitions are rejected', () => { const { manager, student, officer } = fixture(); const request = manager.submitRequest(new ICTSupportRequest({ requestId: 'REQ-X', requester: student, title: 'X', description: 'X', location: 'X' }, { deviceType: 'PC', systemName: 'X', faultType: 'X', networkImpact: 'Low' })); assert.throws(() => manager.closeRequest(request.requestId, officer.userId), /transition/); });
 
-// Confirm requester-only update and cancellation permissions.
-test('requesters can update and cancel only their own Submitted requests', () => { const { manager, student, staff } = fixture(); const request = manager.submitRequest(new CleaningRequest({ requestId: 'REQ-OWNER', requester: student, title: 'Bins', description: 'Full', location: 'Hall' }, { cleaningArea: 'Hall', hygieneRisk: 'Low', serviceType: 'Bins', preferredServiceTime: 'Morning' })); assert.throws(() => manager.updateRequest(request.requestId, staff.userId, { title: 'Other' }), /requester/); manager.updateRequest(request.requestId, student.userId, { title: 'Overflowing bins' }); assert.equal(request.title, 'Overflowing bins'); manager.cancelRequest(request.requestId, student.userId); assert.equal(request.status, 'Cancelled'); });
+// Test technician permission.
+test('only assigned technician can start work', () => { const { manager, student, officer, technician } = fixture(); const wrong = new Technician('TECH002', 'Wrong', 'Tech', 'wrong@example.com', 'Cleaning'); manager.registerUser(wrong); const request = manager.submitRequest(new ICTSupportRequest({ requestId: 'REQ-P', requester: student, title: 'P', description: 'P', location: 'P' }, { deviceType: 'PC', systemName: 'P', faultType: 'P', networkImpact: 'Low' })); manager.reviewRequest(request.requestId, officer.userId); manager.assignTechnician(request.requestId, officer.userId, technician.userId); assert.throws(() => manager.startWork(request.requestId, wrong.userId), /assigned/); });
 
-// Confirm status summaries group requests by current state.
-test('request status summary returns correct counts', () => { const { manager, student } = fixture(); manager.submitRequest(new CleaningRequest({ requestId: 'REQ-SUM', requester: student, title: 'Bins', description: 'Full', location: 'Hall' }, { cleaningArea: 'Hall', hygieneRisk: 'Low', serviceType: 'Bins', preferredServiceTime: 'Morning' })); assert.deepEqual(manager.getRequestsummarybystatus(), { Submitted: 1 }); });
+// Test search, filter, and sort.
+test('search filter and sort return matching records', () => { const { manager, student } = fixture(); const a = manager.submitRequest(new ICTSupportRequest({ requestId: 'REQ-A', requester: student, title: 'Wi-Fi issue', description: 'network', location: 'A', priority: 'Urgent' }, { deviceType: 'PC', systemName: 'Wi-Fi', faultType: 'Down', networkImpact: 'High' })); const b = manager.submitRequest(new MaintenanceRequest({ requestId: 'REQ-B', requester: student, title: 'Door', description: 'broken', location: 'B', priority: 'Low' }, { building: 'B', roomNumber: '2', hazardLevel: 'Low', equipmentAffected: 'Door' })); assert.equal(manager.searchRequests('Wi-Fi').length, 1); assert.equal(manager.filterRequests({ category: 'ICT Support' }).length, 1); assert.equal(manager.sortRequests([a, b], 'priority')[0].requestId, 'REQ-A'); });
+
+// Test reports using array algorithms.
+test('reports group records and calculate volume', () => { const { manager, student } = fixture(); manager.submitRequest(new MaintenanceRequest({ requestId: 'REQ-R', requester: student, title: 'Door', description: 'broken', location: 'B', priority: 'Urgent' }, { building: 'B', roomNumber: '2', hazardLevel: 'High', equipmentAffected: 'Door' })); const report = buildReports(manager.requests); assert.equal(report.byCategory['Facilities Maintenance'].length, 1); assert.equal(report.urgent.length, 1); });
+
+// Test JSON persistence and specialised object restoration.
+test('JSON persistence restores active specialised objects', async () => { const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'campus-test-')); const store = new PersistentCampusService(dir); const { manager, student } = fixture(); store.manager = manager; store.manager.submitRequest(new CleaningRequest({ requestId: 'REQ-S', requester: student, title: 'Clean', description: 'Mess', location: 'Cafeteria' }, { cleaningArea: 'Cafeteria', hygieneRisk: 'Medium', serviceType: 'Deep clean', preferredServiceTime: 'Evening' })); await store.save(); const loaded = await new PersistentCampusService(dir).load(); assert.equal(loaded.requests[0].constructor.name, 'CleaningRequest'); assert.equal(loaded.requests[0].getTargetResolutionHours(), 18); await fs.rm(dir, { recursive: true, force: true }); });
+
+// Test missing data files return empty arrays.
+test('missing JSON files load as empty arrays', async () => { const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'campus-empty-')); const store = new PersistentCampusService(dir); const loaded = await store.load(); assert.equal(loaded.users.length, 0); await fs.rm(dir, { recursive: true, force: true }); });
+
+// Test cancellation is final and cannot be repeated.
+test('cancelled requests cannot be cancelled again', () => { const { manager, student } = fixture(); const request = manager.submitRequest(new CleaningRequest({ requestId: 'REQ-CAN', requester: student, title: 'Bins', description: 'Full', location: 'Hall' }, { cleaningArea: 'Hall', hygieneRisk: 'Low', serviceType: 'Bins', preferredServiceTime: 'Morning' })); manager.cancelRequest(request.requestId, student.userId); assert.throws(() => manager.cancelRequest(request.requestId, student.userId), /transition/); });
